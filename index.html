@@ -176,8 +176,8 @@
 <p class="subtitle">Pollinations.ai + Claude API — ローカル実行用</p>
 
 <div class="card">
-  <label>ANTHROPIC API キー（プロンプト翻訳に使用）</label>
-  <input type="password" id="apiKey" placeholder="sk-ant-..." />
+  <label>ANTHROPIC API キー（任意 — プロンプト詳細最適化に使用）</label>
+  <input type="password" id="apiKey" placeholder="sk-ant-... （空白でもOK）" />
 
   <div style="margin-top:18px">
     <label>画像の説明（日本語OK）</label>
@@ -224,6 +224,13 @@
 <script>
 const history = [];
 
+async function translateWithGoogle(text) {
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ja&tl=en&dt=t&q=${encodeURIComponent(text)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return data[0].map(s => s[0]).join('');
+}
+
 async function generate() {
   const apiKey = document.getElementById('apiKey').value.trim();
   const promptJa = document.getElementById('prompt').value.trim();
@@ -238,10 +245,10 @@ async function generate() {
 
   let engPrompt = promptJa;
 
-  // Claude APIでプロンプト翻訳（APIキーがある場合のみ）
   if (apiKey) {
+    // Claude APIでSD向けプロンプト最適化
     try {
-      setStatus('🤖 プロンプトを最適化中…');
+      setStatus('🤖 Claudeでプロンプトを最適化中…');
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
@@ -254,6 +261,15 @@ async function generate() {
       });
       const data = await res.json();
       engPrompt = data.content?.[0]?.text?.trim() || promptJa;
+    } catch(e) {
+      setStatus('⚠️ Claude翻訳エラー。Google翻訳を使用します…');
+      try { engPrompt = await translateWithGoogle(promptJa); } catch {}
+    }
+  } else {
+    // Google翻訳（APIキー不要）
+    try {
+      setStatus('🌐 Google翻訳でプロンプトを変換中…');
+      engPrompt = await translateWithGoogle(promptJa);
     } catch(e) {
       setStatus('⚠️ 翻訳エラー。元のテキストで生成します…');
     }
