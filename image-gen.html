@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI 画像生成</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 800;
+    color: #7c6af7;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 36px;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 28px;
+    width: 100%;
+    max-width: 600px;
+    margin-bottom: 28px;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+
+  textarea, input, select {
+    width: 100%;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 12px 15px;
+    color: #f0f0f0;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    resize: none;
+    transition: border 0.2s;
+  }
+
+  textarea:focus, input:focus, select:focus {
+    border-color: #7c6af7;
+  }
+
+  select option { background: #1a1740; }
+
+  .row { display: flex; gap: 14px; margin-top: 14px; }
+  .col { flex: 1; }
+
+  .btn {
+    margin-top: 18px;
+    width: 100%;
+    padding: 13px;
+    background: linear-gradient(135deg, #7c6af7, #6c5ce7);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn:hover:not(:disabled) { opacity: 0.88; }
+
+  #status {
+    font-size: 13px;
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    min-height: 20px;
+    margin-top: 12px;
+  }
+
+  #result {
+    width: 100%;
+    max-width: 600px;
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  #result img {
+    width: 100%;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+    display: block;
+  }
+
+  .meta {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.45);
+    line-height: 1.6;
+  }
+
+  .dl-btn {
+    display: block;
+    text-align: center;
+    padding: 11px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    color: #f0f0f0;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+  .dl-btn:hover { background: rgba(255,255,255,0.14); }
+
+  .history-grid {
+    width: 100%;
+    max-width: 600px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .history-grid img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .history-grid img:hover { transform: scale(1.04); }
+
+  .section-title {
+    width: 100%;
+    max-width: 600px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 20px;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+
+<h1>✦ AI 画像生成</h1>
+<p class="subtitle">Pollinations.ai + Claude API — ローカル実行用</p>
+
+<div class="card">
+  <label>ANTHROPIC API キー（プロンプト翻訳に使用）</label>
+  <input type="password" id="apiKey" placeholder="sk-ant-..." />
+
+  <div style="margin-top:18px">
+    <label>画像の説明（日本語OK）</label>
+    <textarea id="prompt" rows="3" placeholder="例: 夕暮れの富士山、水彩画風"></textarea>
+  </div>
+
+  <div class="row">
+    <div class="col">
+      <label>サイズ</label>
+      <select id="size">
+        <option value="512x512">512 × 512</option>
+        <option value="768x512">768 × 512（横長）</option>
+        <option value="512x768">512 × 768（縦長）</option>
+        <option value="1024x1024">1024 × 1024（高解像度）</option>
+      </select>
+    </div>
+    <div class="col">
+      <label>スタイル</label>
+      <select id="style">
+        <option value="">なし</option>
+        <option value="photorealistic, 8k, sharp focus">フォトリアル</option>
+        <option value="watercolor painting, soft colors">水彩画</option>
+        <option value="anime style, vibrant colors">アニメ</option>
+        <option value="oil painting, impressionist">油絵</option>
+        <option value="pixel art, retro game style">ピクセルアート</option>
+        <option value="pencil sketch, black and white">鉛筆スケッチ</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="btn" id="genBtn" onclick="generate()">🎨 画像を生成する</button>
+  <div id="status"></div>
+</div>
+
+<div id="result">
+  <img id="outImg" src="" alt="生成画像" />
+  <div class="meta" id="metaInfo"></div>
+  <a class="dl-btn" id="dlBtn" href="#" download="generated.jpg">⬇️ 画像をダウンロード</a>
+</div>
+
+<div class="section-title" id="histLabel" style="display:none">履歴</div>
+<div class="history-grid" id="historyGrid"></div>
+
+<script>
+const history = [];
+
+async function generate() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const promptJa = document.getElementById('prompt').value.trim();
+  const size = document.getElementById('size').value;
+  const style = document.getElementById('style').value;
+
+  if (!promptJa) { setStatus('⚠️ 画像の説明を入力してください'); return; }
+
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  document.getElementById('result').style.display = 'none';
+
+  let engPrompt = promptJa;
+
+  // Claude APIでプロンプト翻訳（APIキーがある場合のみ）
+  if (apiKey) {
+    try {
+      setStatus('🤖 プロンプトを最適化中…');
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 200,
+          system: 'Convert the user\'s image generation request into an optimal English prompt for Stable Diffusion. Output only the prompt, no explanation.',
+          messages: [{ role: 'user', content: promptJa }]
+        })
+      });
+      const data = await res.json();
+      engPrompt = data.content?.[0]?.text?.trim() || promptJa;
+    } catch(e) {
+      setStatus('⚠️ 翻訳エラー。元のテキストで生成します…');
+    }
+  }
+
+  // スタイル付加
+  const finalPrompt = style ? `${engPrompt}, ${style}` : engPrompt;
+  const [w, h] = size.split('x');
+  const seed = Math.floor(Math.random() * 999999);
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
+
+  setStatus('🎨 画像生成中… (10〜30秒かかる場合があります)');
+
+  const img = document.getElementById('outImg');
+  img.onload = () => {
+    document.getElementById('result').style.display = 'flex';
+    document.getElementById('dlBtn').href = url;
+    document.getElementById('metaInfo').innerHTML =
+      `<b>プロンプト:</b> ${finalPrompt}<br><b>サイズ:</b> ${w}×${h} / <b>Seed:</b> ${seed}`;
+    setStatus('✅ 生成完了！');
+    btn.disabled = false;
+
+    // 履歴追加
+    addHistory(url, finalPrompt);
+  };
+  img.onerror = () => {
+    setStatus('❌ 生成に失敗しました。もう一度お試しください。');
+    btn.disabled = false;
+  };
+  img.src = url;
+}
+
+function addHistory(url, prompt) {
+  history.unshift({ url, prompt });
+  const grid = document.getElementById('historyGrid');
+  const label = document.getElementById('histLabel');
+  label.style.display = 'block';
+  grid.innerHTML = history.slice(0, 6).map(h =>
+    `<img src="${h.url}" title="${h.prompt}" onclick="document.getElementById('outImg').src='${h.url}'; document.getElementById('result').style.display='flex';" />`
+  ).join('');
+}
+
+function setStatus(msg) {
+  document.getElementById('status').textContent = msg;
+}
+
+// Enterキーで生成
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.ctrlKey) generate();
+});
+</script>
+</body>
+</html>
