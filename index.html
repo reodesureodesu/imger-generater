@@ -1,1034 +1,471 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>ConnectCall</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI 画像生成</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0f1117;--surface:#1a1d2e;--surface2:#252840;--accent:#6c63ff;--accent2:#48c9b0;--text:#e8eaf0;--muted:#8b8fa8;--danger:#e74c6c;--online:#2ecc71;--border:#2d3050}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh}
-input{font-family:inherit}
-input[type=text],input[type=password]{width:100%;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:1rem;outline:none;transition:border .2s}
-input[type=text]:focus,input[type=password]:focus{border-color:var(--accent)}
-.btn{padding:12px 20px;border-radius:10px;border:none;font-size:1rem;font-weight:600;cursor:pointer;transition:all .2s}
-.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#5a52e0}
-.btn-primary:disabled{opacity:.5;cursor:not-allowed}
-.btn-success{background:var(--accent2);color:#0f1117}.btn-success:hover{opacity:.85}
-.btn-danger{background:var(--danger);color:#fff}.btn-danger:hover{opacity:.85}
-.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}.btn-ghost:hover{background:var(--border)}
-
-/* JOIN */
-#joinScreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:24px;padding:20px}
-.logo{font-size:2.4rem;font-weight:800;letter-spacing:-1px}
-.logo span{color:var(--accent)}
-.logo small{font-size:.9rem;color:var(--muted);font-weight:400;display:block;text-align:center;margin-top:4px}
-.joinCard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:18px}
-.joinTabs{display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.joinTab{flex:1;padding:10px;border:none;background:transparent;color:var(--muted);font-size:.9rem;font-weight:600;cursor:pointer;transition:.2s}
-.joinTab.active{background:var(--accent);color:#fff}
-.formGroup{display:flex;flex-direction:column;gap:8px}
-.formGroup label{font-size:.78rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-.pinWrap{position:relative}
-.pinWrap input{padding-right:44px}
-.pinToggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;padding:4px}
-.statusMsg{text-align:center;font-size:.85rem;min-height:1.2em}
-.statusMsg.err{color:var(--danger)}
-.statusMsg.ok{color:var(--accent2)}
-.avatarPicker{display:flex;flex-wrap:wrap;gap:8px}
-.avatarPicker label{cursor:pointer}
-.avatarPicker input{display:none}
-.avatarPicker .swatch{width:32px;height:32px;border-radius:50%;border:3px solid transparent;transition:.15s}
-.avatarPicker input:checked+.swatch{border-color:#fff;transform:scale(1.15)}
-.avatarEmoji{display:flex;flex-wrap:wrap;gap:6px}
-.avatarEmoji label{cursor:pointer}
-.avatarEmoji input{display:none}
-.avatarEmoji .eopt{width:34px;height:34px;border-radius:8px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.2rem;transition:.15s;background:var(--surface2)}
-.avatarEmoji input:checked+.eopt{border-color:var(--accent)}
-.avatarImgWrap{display:flex;align-items:center;gap:10px}
-.avatarImgPreview{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--border);display:none}
-.avatarImgPlaceholder{width:52px;height:52px;border-radius:50%;background:var(--surface2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:1.4rem;cursor:pointer;flex-shrink:0}
-.uploadBtn{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.82rem;cursor:pointer}
-.uploadBtn:hover{background:var(--border)}
-.autoLoginBanner{background:var(--surface2);border:1px solid var(--accent);border-radius:12px;padding:14px;display:none;flex-direction:column;gap:10px}
-.autoLoginBanner.active{display:flex}
-.autoLoginBanner p{font-size:.88rem;color:var(--muted)}
-.autoLoginBanner strong{color:var(--text)}
-.autoLoginBanner .row{display:flex;gap:8px}
-.autoLoginBanner .btn{flex:1;padding:10px;font-size:.85rem}
-
-/* MAIN */
-#mainApp{display:none;height:100vh;flex-direction:column}
-.topBar{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
-.topBar .logo{font-size:1.4rem}
-.userBadge{display:flex;align-items:center;gap:8px;font-size:.9rem;background:var(--surface2);padding:6px 12px;border-radius:20px;cursor:pointer;transition:.2s}
-.userBadge:hover{background:var(--border)}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--online);display:inline-block;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.appBody{display:flex;flex:1;overflow:hidden}
-
-/* SIDEBAR */
-.sidebar{width:280px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
-.sideSection{padding:16px;border-bottom:1px solid var(--border)}
-.sideSection h3{font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:12px}
-.onlineList{display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 80px);overflow-y:auto}
-.onlineUser{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:var(--surface2)}
-.avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0;overflow:hidden}
-.avatar img{width:100%;height:100%;object-fit:cover}
-.uinfo{flex:1;min-width:0}
-.uname{font-size:.9rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ustatus{font-size:.7rem;color:var(--muted)}
-.callBtn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:.75rem;cursor:pointer;flex-shrink:0}
-.callBtn:hover{background:#5a52e0}
-.youTag{font-size:.7rem;color:var(--accent2);background:rgba(72,201,176,.15);padding:2px 8px;border-radius:4px;flex-shrink:0}
-.emptyState{text-align:center;color:var(--muted);font-size:.85rem;padding:24px 0;line-height:1.9}
-
-/* CHAT */
-.mainContent{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.chatHeader{padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--border);font-weight:600;display:flex;align-items:center;gap:8px;flex-shrink:0}
-.unreadBadge{background:var(--danger);color:#fff;font-size:.7rem;padding:1px 7px;border-radius:10px;font-weight:700;display:none}
-.chatMessages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
-.chatMessages::-webkit-scrollbar{width:4px}
-.chatMessages::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-.message{display:flex;gap:10px;max-width:82%;position:relative}
-.message.mine{align-self:flex-end;flex-direction:row-reverse}
-.message .avatar{width:30px;height:30px;font-size:.85rem;flex-shrink:0;align-self:flex-end}
-.msgBubble{padding:10px 14px;border-radius:16px;font-size:.9rem;line-height:1.5;word-break:break-word;position:relative}
-.message:not(.mine) .msgBubble{background:var(--surface2);border-bottom-left-radius:4px}
-.message.mine .msgBubble{background:var(--accent);border-bottom-right-radius:4px}
-.msgBubble img{max-width:220px;max-height:220px;border-radius:10px;display:block;margin-top:4px;cursor:pointer}
-.msgMeta{font-size:.7rem;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:6px}
-.message.mine .msgMeta{justify-content:flex-end}
-.deleteBtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.75rem;padding:0 2px;opacity:0;transition:.15s}
-.message:hover .deleteBtn{opacity:1}
-.deleteBtn:hover{color:var(--danger)}
-.deletedMsg{font-style:italic;color:var(--muted);font-size:.85rem}
-.systemMsg{text-align:center;font-size:.8rem;color:var(--muted);padding:4px 0}
-.typingIndicator{font-size:.8rem;color:var(--muted);padding:2px 20px;min-height:1.3em;font-style:italic}
-.chatInputRow{border-top:1px solid var(--border);background:var(--surface);flex-shrink:0}
-.imgPreviewBar{display:none;padding:10px 20px 0;gap:8px;align-items:center}
-.imgPreviewBar.active{display:flex}
-.imgPreviewThumb{width:56px;height:56px;border-radius:8px;object-fit:cover;border:2px solid var(--accent)}
-.removeBtn{background:var(--danger);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:.75rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.chatInputMain{display:flex;gap:10px;padding:14px 20px}
-.chatInputMain input{flex:1}
-.iconBtn{width:42px;height:42px;border-radius:10px;border:none;background:var(--surface2);color:var(--text);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.iconBtn:hover{background:var(--border)}
-
-/* IMAGE OVERLAY */
-#imgOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:999;align-items:center;justify-content:center;cursor:zoom-out}
-#imgOverlay.active{display:flex}
-#imgOverlay img{max-width:92vw;max-height:92vh;border-radius:12px}
-
-/* VIDEO */
-#videoModal{display:none;position:fixed;inset:0;background:#0a0b10;z-index:100;flex-direction:row}
-#videoModal.active{display:flex}
-.videoMain{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;position:relative}
-.videoGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:960px}
-.videoBox{background:var(--surface);border-radius:14px;overflow:hidden;aspect-ratio:16/9;position:relative;border:2px solid var(--border)}
-.videoBox video{width:100%;height:100%;object-fit:cover}
-.videoBox.screen-share{border-color:var(--accent2)}
-.videoLabel{position:absolute;bottom:8px;left:10px;background:rgba(0,0,0,.65);padding:3px 10px;border-radius:20px;font-size:.78rem}
-.videoControls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
-.ctrlBtn{width:50px;height:50px;border-radius:50%;border:none;font-size:1.2rem;cursor:pointer;transition:.2s;display:flex;align-items:center;justify-content:center}
-.ctrlBtn.on{background:var(--surface2);color:var(--text)}
-.ctrlBtn.off{background:#3a1a1a;color:var(--danger)}
-.ctrlBtn.end{background:var(--danger);color:#fff;width:58px;height:58px;font-size:1.4rem}
-.ctrlBtn.active{background:var(--accent2);color:#0f1117}
-.ctrlBtn:hover{transform:scale(1.08)}
-.callStatus{font-size:.82rem;color:var(--muted);position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);padding:4px 14px;border-radius:20px;white-space:nowrap}
-.callDuration{position:absolute;top:14px;right:20px;font-size:.8rem;color:var(--accent2);background:rgba(0,0,0,.5);padding:4px 12px;border-radius:20px}
-.emojiPickerWrap{position:relative}
-.emojiPicker{position:absolute;bottom:64px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px;display:none;gap:6px;flex-wrap:wrap;width:230px;z-index:10;box-shadow:0 8px 24px rgba(0,0,0,.4)}
-.emojiPicker.open{display:flex}
-.emojiPicker button{background:none;border:none;font-size:1.6rem;cursor:pointer;border-radius:8px;padding:4px;transition:.15s;line-height:1;user-select:none}
-.emojiPicker button:hover{background:var(--surface2)}
-.reaction{position:fixed;pointer-events:none;z-index:300;animation:floatUp 2s ease forwards;display:flex;flex-direction:column;align-items:center;gap:2px}
-.reaction .emoji{font-size:2.8rem;line-height:1}
-.reaction .rname{font-size:.65rem;color:#fff;background:rgba(0,0,0,.55);padding:1px 6px;border-radius:8px;white-space:nowrap}
-@keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}60%{opacity:1;transform:translateY(-100px) scale(1.3)}100%{opacity:0;transform:translateY(-150px) scale(1)}}
-.callChatPanel{width:300px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
-.callChatPanel h4{padding:14px 16px;font-size:.85rem;font-weight:700;border-bottom:1px solid var(--border);flex-shrink:0;color:var(--accent2)}
-.callChatMsgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px}
-.callChatMsgs::-webkit-scrollbar{width:3px}
-.callChatMsgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-.callMsg{background:var(--surface2);border-radius:10px;padding:8px 10px;font-size:.82rem;line-height:1.4;word-break:break-word}
-.callMsg.mine{background:var(--accent);align-self:flex-end}
-.callMsg .cmName{font-size:.7rem;color:var(--accent2);margin-bottom:3px;font-weight:600}
-.callMsg.mine .cmName{display:none}
-.callChatTyping{font-size:.75rem;color:var(--muted);padding:2px 12px;font-style:italic;min-height:1.3em}
-.callChatInput{display:flex;gap:8px;padding:10px;border-top:1px solid var(--border);flex-shrink:0}
-.callChatInput input{flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.85rem;outline:none}
-.callChatInput input:focus{border-color:var(--accent)}
-.callChatInput button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-size:.85rem;font-weight:600}
-
-/* PROFILE MODAL */
-#profileModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:400;align-items:center;justify-content:center;padding:20px}
-#profileModal.active{display:flex}
-.profileCard{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:18px;max-height:90vh;overflow-y:auto}
-.profileCard h3{font-size:1.2rem;font-weight:700}
-.profilePreview{display:flex;align-items:center;gap:16px;background:var(--surface2);padding:16px;border-radius:12px}
-.profilePreview .bigAvatar{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;overflow:hidden}
-.profilePreview .previewName{font-size:1.1rem;font-weight:700}
-.profilePreview .previewSub{font-size:.8rem;color:var(--muted)}
-.profileActions{display:flex;gap:10px}
-.profileActions .btn{flex:1;padding:10px}
-
-/* INCOMING */
-#incomingCall{display:none;position:fixed;bottom:24px;right:24px;z-index:200;background:var(--surface);border:1px solid var(--accent);border-radius:16px;padding:20px;min-width:260px;box-shadow:0 8px 32px rgba(108,99,255,.3);animation:slideIn .3s ease}
-@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
-#incomingCall.active{display:block}
-#incomingCall h4{margin-bottom:6px}
-#incomingCall p{color:var(--muted);font-size:.85rem;margin-bottom:14px}
-#incomingCall .btns{display:flex;gap:10px}
-#incomingCall .btns .btn{flex:1;padding:10px}
-
-/* DELETE CONFIRM */
-#deleteConfirm{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;align-items:center;justify-content:center}
-#deleteConfirm.active{display:flex}
-.deleteCard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:16px;text-align:center}
-.deleteCard h4{font-size:1.1rem}
-.deleteCard p{color:var(--muted);font-size:.88rem}
-.deleteCard .btns{display:flex;gap:10px}
-.deleteCard .btns .btn{flex:1;padding:10px}
-
-.c0{background:#6c63ff}.c1{background:#e74c6c}.c2{background:#48c9b0}.c3{background:#f39c12}
-.c4{background:#9b59b6}.c5{background:#1abc9c}.c6{background:#e67e22}.c7{background:#3498db}
-@media(max-width:768px){.sidebar{display:none}.callChatPanel{display:none}.videoGrid{grid-template-columns:1fr}}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 36px 16px 60px;
+  }
+  h1 { font-size: 26px; font-weight: 800; color: #7c6af7; margin-bottom: 6px; letter-spacing: 1px; }
+  .subtitle { font-size: 12px; color: rgba(255,255,255,0.35); margin-bottom: 30px; }
+  .card {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%; max-width: 680px;
+    margin-bottom: 20px;
+  }
+  .card-title { font-size: 11px; color: rgba(255,255,255,0.35); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 16px; }
+  label { display: block; font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 6px; }
+  textarea, input[type=text], input[type=password], input[type=number], select {
+    width: 100%;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 10px 13px;
+    color: #f0f0f0;
+    font-size: 13.5px;
+    font-family: inherit;
+    outline: none;
+    resize: none;
+    transition: border 0.2s;
+  }
+  textarea:focus, input:focus, select:focus { border-color: #7c6af7; }
+  select option { background: #1a1740; }
+  input[type=range] { width: 100%; accent-color: #7c6af7; cursor: pointer; }
+  .row { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+  .col { flex: 1; min-width: 140px; }
+  .col-sm { flex: 0 0 120px; }
+  .field { margin-top: 14px; }
+  .seed-row { display: flex; gap: 8px; align-items: flex-end; }
+  .seed-row input { flex: 1; }
+  .seed-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    color: #f0f0f0;
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    white-space: nowrap;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .seed-btn:hover { background: rgba(255,255,255,0.18); }
+  .toggle-btn {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+    margin-left: 6px;
+  }
+  .collapsible { overflow: hidden; transition: max-height 0.3s ease; }
+  .steps-val { font-size: 12px; color: #7c6af7; margin-left: 8px; }
+  .btn {
+    margin-top: 20px;
+    width: 100%;
+    padding: 13px;
+    background: linear-gradient(135deg, #7c6af7, #6c5ce7);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn:hover:not(:disabled) { opacity: 0.88; }
+  #status {
+    font-size: 13px; color: rgba(255,255,255,0.5);
+    text-align: center; min-height: 20px; margin-top: 12px;
+  }
+  .progress-bar-wrap {
+    width: 100%; height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    margin-top: 10px;
+    overflow: hidden;
+    display: none;
+  }
+  .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #7c6af7, #a78bfa);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+  /* Grid results */
+  #resultGrid {
+    width: 100%; max-width: 680px;
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .grid-imgs {
+    display: grid;
+    gap: 10px;
+  }
+  .grid-imgs.n1 { grid-template-columns: 1fr; }
+  .grid-imgs.n2 { grid-template-columns: 1fr 1fr; }
+  .grid-imgs.n4 { grid-template-columns: 1fr 1fr; }
+  .img-wrap {
+    position: relative;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+  .img-wrap .overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.7));
+    padding: 10px 12px 8px;
+    font-size: 11px; color: rgba(255,255,255,0.6);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .img-wrap .dl-icon {
+    background: rgba(255,255,255,0.15);
+    border: none; border-radius: 7px;
+    color: #fff; padding: 4px 9px; cursor: pointer; font-size: 12px;
+    text-decoration: none;
+  }
+  .img-wrap .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(124,106,247,0.3);
+    border-top-color: #7c6af7;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .meta-card {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 12px; color: rgba(255,255,255,0.45); line-height: 1.8;
+  }
+  /* Lightbox */
+  #lightbox {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.88); z-index: 999;
+    align-items: center; justify-content: center;
+    cursor: zoom-out;
+  }
+  #lightbox.active { display: flex; }
+  #lightbox img { max-width: 92vw; max-height: 92vh; border-radius: 12px; }
+  /* History */
+  .section-title { width: 100%; max-width: 680px; font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 24px; margin-bottom: 6px; letter-spacing: 1px; text-transform: uppercase; }
+  .history-grid { width: 100%; max-width: 680px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .history-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: transform 0.2s; }
+  .history-grid img:hover { transform: scale(1.06); }
 </style>
 </head>
 <body>
 
-<div id="imgOverlay" onclick="this.classList.remove('active')"><img id="overlayImg" src=""></div>
+<h1>✦ AI 画像生成</h1>
+<p class="subtitle">Pollinations.ai + Google翻訳 / Claude API — ローカル実行用</p>
 
-<!-- DELETE CONFIRM -->
-<div id="deleteConfirm">
-  <div class="deleteCard">
-    <h4>🗑️ メッセージを削除</h4>
-    <p>このメッセージを削除しますか？<br>全員の画面から消えます。</p>
-    <div class="btns">
-      <button class="btn btn-ghost" onclick="closeDeleteConfirm()">キャンセル</button>
-      <button class="btn btn-danger" onclick="confirmDelete()">削除</button>
-    </div>
+<!-- Main Settings -->
+<div class="card">
+  <div class="card-title">🔑 API設定（任意）</div>
+  <label>Anthropic APIキー — 入力するとClaudeでプロンプトを最適化</label>
+  <input type="password" id="apiKey" placeholder="sk-ant-... （空でもGoogle翻訳を使用）" />
+</div>
+
+<div class="card">
+  <div class="card-title">🎨 プロンプト</div>
+  <label>画像の説明（日本語OK）</label>
+  <textarea id="prompt" rows="3" placeholder="例: 夕暮れの富士山、桜が舞う、幻想的な雰囲気"></textarea>
+
+  <div class="field">
+    <label>ネガティブプロンプト（除外したいもの）</label>
+    <textarea id="negPrompt" rows="2" placeholder="例: blurry, low quality, watermark, text, ugly, deformed"></textarea>
   </div>
 </div>
 
-<!-- JOIN -->
-<div id="joinScreen">
-  <div class="logo">Connect<span>Call</span><small>世界中の人とリアルタイム通話</small></div>
-  <div class="joinCard">
-    <!-- 自動ログインバナー -->
-    <div class="autoLoginBanner" id="autoLoginBanner">
-      <p>前回のアカウントが見つかりました<br><strong id="autoLoginName"></strong> として続けますか？</p>
-      <div class="row">
-        <button class="btn btn-primary" onclick="autoLogin()">このアカウントでログイン</button>
-        <button class="btn btn-ghost" onclick="dismissAutoLogin()">別のアカウント</button>
-      </div>
+<div class="card">
+  <div class="card-title">⚙️ 生成設定</div>
+  <div class="row">
+    <div class="col">
+      <label>枚数</label>
+      <select id="count">
+        <option value="1">1枚</option>
+        <option value="2">2枚</option>
+        <option value="4" selected>4枚</option>
+      </select>
     </div>
-    <div class="joinTabs" id="joinTabs">
-      <button class="joinTab active" onclick="switchTab('login')">ログイン</button>
-      <button class="joinTab" onclick="switchTab('register')">新規登録</button>
+    <div class="col">
+      <label>サイズ</label>
+      <select id="size">
+        <option value="512x512" selected>512 × 512</option>
+        <option value="768x512">768 × 512（横長）</option>
+        <option value="512x768">512 × 768（縦長）</option>
+        <option value="1024x1024">1024 × 1024（高解像度）</option>
+        <option value="1280x720">1280 × 720（16:9）</option>
+      </select>
     </div>
-
-    <!-- LOGIN FORM -->
-    <form id="loginForm" onsubmit="doLogin(event)" autocomplete="on" style="display:flex;flex-direction:column;gap:16px">
-      <input type="text" name="username" id="loginName" placeholder="ニックネーム" autocomplete="username" required>
-      <div class="pinWrap">
-        <input type="password" name="password" id="loginPin" placeholder="4桁PIN" autocomplete="current-password" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" required>
-        <button type="button" class="pinToggle" onclick="togglePin('loginPin',this)">👁</button>
-      </div>
-      <button type="submit" class="btn btn-primary" id="loginBtn">ログイン</button>
-      <div class="statusMsg" id="loginStatus"></div>
-    </form>
-
-    <!-- REGISTER FORM -->
-    <form id="registerForm" onsubmit="doRegister(event)" autocomplete="on" style="display:none;flex-direction:column;gap:16px">
-      <div class="formGroup">
-        <label>ニックネーム</label>
-        <input type="text" name="username" id="regName" placeholder="例：田中太郎" maxlength="20" autocomplete="username" required>
-      </div>
-      <div class="formGroup">
-        <label>4桁PINコード（再ログイン用）</label>
-        <div class="pinWrap">
-          <input type="password" name="password" id="regPin" placeholder="0000〜9999" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" autocomplete="new-password" required>
-          <button type="button" class="pinToggle" onclick="togglePin('regPin',this)">👁</button>
-        </div>
-      </div>
-      <div class="formGroup">
-        <label>アイコン画像（任意）</label>
-        <div class="avatarImgWrap">
-          <div class="avatarImgPlaceholder" id="joinImgPlaceholder" onclick="document.getElementById('joinAvatarFile').click()">📷</div>
-          <img class="avatarImgPreview" id="joinAvatarPreview">
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <button type="button" class="uploadBtn" onclick="document.getElementById('joinAvatarFile').click()">画像を選択</button>
-            <button type="button" class="uploadBtn" id="joinClearImg" style="display:none" onclick="clearJoinAvatar()">削除</button>
-          </div>
-          <input type="file" id="joinAvatarFile" accept="image/*" style="display:none" onchange="onJoinAvatarChange(event)">
-        </div>
-      </div>
-      <div class="formGroup">
-        <label>アイコンの色</label>
-        <div class="avatarPicker" id="colorPicker"></div>
-      </div>
-      <div class="formGroup">
-        <label>アイコン絵文字（任意）</label>
-        <div class="avatarEmoji" id="emojiIconPicker"></div>
-      </div>
-      <button type="submit" class="btn btn-primary" id="regBtn">登録して参加</button>
-      <div class="statusMsg" id="regStatus"></div>
-    </form>
+    <div class="col">
+      <label>モデル</label>
+      <select id="model">
+        <option value="flux" selected>Flux（高品質）</option>
+        <option value="flux-realism">Flux Realism</option>
+        <option value="flux-anime">Flux Anime</option>
+        <option value="flux-3d">Flux 3D</option>
+        <option value="turbo">Turbo（高速）</option>
+      </select>
+    </div>
   </div>
+
+  <div class="row">
+    <div class="col">
+      <label>スタイル追加</label>
+      <select id="style">
+        <option value="">なし</option>
+        <option value="photorealistic, 8k, sharp focus, professional photography">フォトリアル</option>
+        <option value="watercolor painting, soft colors, artistic">水彩画</option>
+        <option value="anime style, vibrant colors, detailed">アニメ</option>
+        <option value="oil painting, impressionist, textured">油絵</option>
+        <option value="pixel art, retro game style, 16bit">ピクセルアート</option>
+        <option value="pencil sketch, black and white, detailed lines">鉛筆スケッチ</option>
+        <option value="cinematic, dramatic lighting, film grain">シネマティック</option>
+        <option value="concept art, fantasy, highly detailed, artstation">コンセプトアート</option>
+        <option value="minimalist, clean, flat design">ミニマル</option>
+      </select>
+    </div>
+    <div class="col-sm">
+      <label>画質</label>
+      <select id="quality">
+        <option value="medium">標準</option>
+        <option value="high" selected>高品質</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Seed -->
+  <div class="field">
+    <label>シード値 <span style="color:rgba(255,255,255,0.3)">（同じ値で再現可能・-1でランダム）</span></label>
+    <div class="seed-row">
+      <input type="number" id="seed" value="-1" min="-1" max="999999" />
+      <button class="seed-btn" onclick="randomSeed()">🎲 ランダム</button>
+      <button class="seed-btn" onclick="document.getElementById('seed').value=-1">↺ リセット</button>
+    </div>
+  </div>
+
+  <!-- Enhance toggle -->
+  <div class="field" style="display:flex;align-items:center;gap:10px;margin-top:16px">
+    <input type="checkbox" id="enhance" style="width:auto;accent-color:#7c6af7;cursor:pointer" />
+    <label style="margin:0;cursor:pointer" for="enhance">✨ プロンプト自動強化（Pollinations.ai enhance）</label>
+  </div>
+
+  <button class="btn" id="genBtn" onclick="generate()">🎨 画像を生成する</button>
+  <div id="status"></div>
+  <div class="progress-bar-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
 </div>
 
-<!-- MAIN -->
-<div id="mainApp">
-  <div class="topBar">
-    <div class="logo" style="font-size:1.4rem">Connect<span>Call</span></div>
-    <div class="userBadge" onclick="openProfile()" title="プロフィール編集">
-      <span class="dot"></span>
-      <div id="topAvatar" class="avatar" style="width:24px;height:24px;font-size:.7rem"></div>
-      <span id="topName"></span>
-      <span style="font-size:.75rem;color:var(--muted)">✏️</span>
-    </div>
-  </div>
-  <div class="appBody">
-    <div class="sidebar">
-      <div class="sideSection">
-        <h3>🟢 オンライン <span id="onlineCount">0</span>人</h3>
-        <div class="onlineList" id="onlineList"><div class="emptyState">読み込み中...</div></div>
-      </div>
-    </div>
-    <div class="mainContent">
-      <div class="chatHeader">
-        💬 グローバルチャット
-        <span style="font-size:.75rem;color:var(--muted);font-weight:400;flex:1">— オンライン全員と</span>
-        <span class="unreadBadge" id="unreadBadge">0</span>
-      </div>
-      <div class="chatMessages" id="chatMessages"></div>
-      <div class="typingIndicator" id="typingIndicator"></div>
-      <div class="chatInputRow">
-        <div class="imgPreviewBar" id="imgPreviewBar">
-          <img id="imgPreviewThumb" class="imgPreviewThumb" src="">
-          <button class="removeBtn" onclick="clearPendingImg()">✕</button>
-          <span style="font-size:.8rem;color:var(--muted)">画像を送信</span>
-        </div>
-        <div class="chatInputMain">
-          <input type="text" id="msgInput" placeholder="メッセージを入力..." onkeydown="onMsgKey(event)" oninput="onTyping()">
-          <button class="iconBtn" onclick="document.getElementById('chatImgFile').click()">🖼️</button>
-          <input type="file" id="chatImgFile" accept="image/*" style="display:none" onchange="onChatImgSelect(event)">
-          <button class="btn btn-primary" style="padding:10px 16px" onclick="sendMsg()">送信</button>
-        </div>
-      </div>
-    </div>
-  </div>
+<!-- Results -->
+<div id="resultGrid">
+  <div class="grid-imgs n4" id="imgGrid"></div>
+  <div class="meta-card" id="metaInfo"></div>
 </div>
 
-<!-- VIDEO MODAL -->
-<div id="videoModal">
-  <div class="videoMain">
-    <div class="callStatus" id="callStatus">接続中...</div>
-    <div class="callDuration" id="callDuration"></div>
-    <div class="videoGrid">
-      <div class="videoBox" id="localBox"><video id="localVideo" autoplay muted playsinline></video><div class="videoLabel" id="localLabel">あなた</div></div>
-      <div class="videoBox" id="remoteBox"><video id="remoteVideo" autoplay playsinline></video><div class="videoLabel" id="remoteLabel">相手</div></div>
-    </div>
-    <div class="videoControls">
-      <button class="ctrlBtn on" id="micBtn" onclick="toggleMic()">🎤</button>
-      <button class="ctrlBtn on" id="camBtn" onclick="toggleCam()">📹</button>
-      <button class="ctrlBtn on" id="screenBtn" onclick="toggleScreen()">🖥️</button>
-      <div class="emojiPickerWrap">
-        <button class="ctrlBtn on" onclick="toggleEmojiPicker()">😊</button>
-        <div class="emojiPicker" id="emojiPicker">
-          <button onmousedown="startReaction('👍')" onmouseup="stopReaction()" ontouchstart="startReaction('👍')" ontouchend="stopReaction()">👍</button>
-          <button onmousedown="startReaction('❤️')" onmouseup="stopReaction()" ontouchstart="startReaction('❤️')" ontouchend="stopReaction()">❤️</button>
-          <button onmousedown="startReaction('😂')" onmouseup="stopReaction()" ontouchstart="startReaction('😂')" ontouchend="stopReaction()">😂</button>
-          <button onmousedown="startReaction('😮')" onmouseup="stopReaction()" ontouchstart="startReaction('😮')" ontouchend="stopReaction()">😮</button>
-          <button onmousedown="startReaction('👏')" onmouseup="stopReaction()" ontouchstart="startReaction('👏')" ontouchend="stopReaction()">👏</button>
-          <button onmousedown="startReaction('🎉')" onmouseup="stopReaction()" ontouchstart="startReaction('🎉')" ontouchend="stopReaction()">🎉</button>
-          <button onmousedown="startReaction('🔥')" onmouseup="stopReaction()" ontouchstart="startReaction('🔥')" ontouchend="stopReaction()">🔥</button>
-          <button onmousedown="startReaction('😢')" onmouseup="stopReaction()" ontouchstart="startReaction('😢')" ontouchend="stopReaction()">😢</button>
-          <button onmousedown="startReaction('🤔')" onmouseup="stopReaction()" ontouchstart="startReaction('🤔')" ontouchend="stopReaction()">🤔</button>
-          <button onmousedown="startReaction('✌️')" onmouseup="stopReaction()" ontouchstart="startReaction('✌️')" ontouchend="stopReaction()">✌️</button>
-          <button onmousedown="startReaction('💯')" onmouseup="stopReaction()" ontouchstart="startReaction('💯')" ontouchend="stopReaction()">💯</button>
-          <button onmousedown="startReaction('🙏')" onmouseup="stopReaction()" ontouchstart="startReaction('🙏')" ontouchend="stopReaction()">🙏</button>
-        </div>
-      </div>
-      <button class="ctrlBtn end" onclick="endCall()">📵</button>
-    </div>
-  </div>
-  <div class="callChatPanel">
-    <h4>💬 通話中チャット</h4>
-    <div class="callChatMsgs" id="callChatMsgs"></div>
-    <div class="callChatTyping" id="callChatTyping"></div>
-    <div class="callChatInput">
-      <input type="text" id="callMsgInput" placeholder="メッセージ..." onkeydown="if(event.key==='Enter')sendCallMsg()" oninput="onCallTyping()">
-      <button class="iconBtn" style="width:34px;height:34px;border-radius:8px;font-size:.9rem" onclick="document.getElementById('callImgFile').click()">🖼️</button>
-      <input type="file" id="callImgFile" accept="image/*" style="display:none" onchange="onCallImgSelect(event)">
-      <button onclick="sendCallMsg()">送信</button>
-    </div>
-  </div>
-</div>
+<!-- History -->
+<div class="section-title" id="histLabel" style="display:none">📁 履歴（クリックで拡大）</div>
+<div class="history-grid" id="historyGrid"></div>
 
-<!-- PROFILE MODAL -->
-<div id="profileModal">
-  <div class="profileCard">
-    <h3>👤 プロフィール編集</h3>
-    <div class="profilePreview">
-      <div class="bigAvatar" id="previewAvatar"></div>
-      <div><div class="previewName" id="previewName"></div><div class="previewSub">オンライン</div></div>
-    </div>
-    <div class="formGroup"><label>ニックネーム</label><input type="text" id="profileName" maxlength="20" oninput="updatePreview()"></div>
-    <div class="formGroup">
-      <label>アイコン画像</label>
-      <div class="avatarImgWrap">
-        <div class="avatarImgPlaceholder" id="profileImgPlaceholder" onclick="document.getElementById('profileAvatarFile').click()">📷</div>
-        <img class="avatarImgPreview" id="profileAvatarPreview">
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <button class="uploadBtn" onclick="document.getElementById('profileAvatarFile').click()">画像を選択</button>
-          <button class="uploadBtn" id="profileClearImg" style="display:none" onclick="clearProfileAvatar()">削除</button>
-        </div>
-        <input type="file" id="profileAvatarFile" accept="image/*" style="display:none" onchange="onProfileAvatarChange(event)">
-      </div>
-    </div>
-    <div class="formGroup"><label>アイコンの色</label><div class="avatarPicker" id="profileColorPicker"></div></div>
-    <div class="formGroup"><label>アイコン絵文字</label><div class="avatarEmoji" id="profileEmojiPicker"></div></div>
-    <div class="profileActions">
-      <button class="btn btn-ghost" onclick="closeProfile()">キャンセル</button>
-      <button class="btn btn-primary" onclick="saveProfile()">保存</button>
-    </div>
-  </div>
-</div>
-
-<!-- INCOMING -->
-<div id="incomingCall">
-  <h4>📞 着信</h4>
-  <p id="callerInfo">から通話リクエストが届いています</p>
-  <div class="btns">
-    <button class="btn btn-success" onclick="acceptCall()">応答</button>
-    <button class="btn btn-danger" onclick="rejectCall()">拒否</button>
-  </div>
+<!-- Lightbox -->
+<div id="lightbox" onclick="closeLightbox()">
+  <img id="lbImg" src="" alt="" />
 </div>
 
 <script>
-const SB_URL='https://vrlddefkseonxdhzenud.supabase.co';
-const SB_KEY='sb_publishable_gO_SlI51Kyh_ZDX1SBF4JQ_acI7F5NQ';
-const HEADERS={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'};
-const TIMEOUT=20000;
-const PEER_CONFIGS=[{host:'0.peerjs.com',port:443,path:'/',secure:true},{host:'peerjs.92k.de',port:443,path:'/',secure:true},null];
-const COLORS=['#6c63ff','#e74c6c','#48c9b0','#f39c12','#9b59b6','#1abc9c','#e67e22','#3498db'];
-const COLOR_CLS=['c0','c1','c2','c3','c4','c5','c6','c7'];
-const ICON_EMOJIS=['😊','😎','🦊','🐱','🐼','🦁','🐸','🌸','⚡','🎮','🎵','🌈'];
-const LS_KEY='connectcall_user';
+const history = [];
 
-let myId='',myName='',myColor=0,myEmoji='',myAvatarDataUrl='',myPeerId='';
-let peer=null,currentCall=null,localStream=null,screenStream=null,incomingCallObj=null;
-let micOn=true,camOn=true,screenOn=false;
-let dataConns={},callDataConn=null;
-let lastMsgTime=null;
-let heartbeatTimer=null,refreshTimer=null,msgTimer=null,durationTimer=null,callStartTime=null;
-let unreadCount=0,isInCall=false;
-let typingTimer=null,isTyping=false;
-let audioCtx=null;
-let reactionInterval=null,reactionActive=false;
-let pendingImgFile=null,pendingImgDataUrl='';
-let pendingDeleteId=null;
-let profileAvatarDataUrl='',joinAvatarDataUrl='';
-
-// ===== UTILS =====
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-function nowStr(){return new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'})}
-function colorIdx(n){let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))&0xff;return h%8}
-function isAtBottom(id){const el=document.getElementById(id);return el.scrollHeight-el.scrollTop-el.clientHeight<80;}
-async function sbUpsert(t,d){await axios.post(`${SB_URL}/rest/v1/${t}`,d,{headers:HEADERS})}
-async function sbSelect(t,q=''){const r=await axios.get(`${SB_URL}/rest/v1/${t}?${q}`,{headers:{...HEADERS,'Accept':'application/json'}});return r.data}
-async function sbUpdate(t,q,d){await axios.patch(`${SB_URL}/rest/v1/${t}?${q}`,d,{headers:{...HEADERS,'Prefer':'return=minimal','Content-Type':'application/json'}})}
-// インラインonclickの代わりにイベント委譲で削除ボタンを処理
-document.addEventListener('click',e=>{
-  const btn=e.target.closest('.deleteBtn');
-  if(btn){askDelete(btn.dataset.msgId);}
-});
-async function sbDelete(t,q){await axios.delete(`${SB_URL}/rest/v1/${t}?${q}`,{headers:HEADERS})}
-function broadcast(d){Object.values(dataConns).forEach(c=>{try{c.send(d)}catch(e){}})}
-
-// ===== AUDIO =====
-function getAudioCtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx}
-function playTone(f,d,t='sine',v=0.3){try{const ctx=getAudioCtx(),o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type=t;o.frequency.value=f;g.gain.setValueAtTime(v,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+d);o.start();o.stop(ctx.currentTime+d);}catch(e){}}
-const RSOUNDS={'👍':()=>{playTone(880,.08,'sine',.25);setTimeout(()=>playTone(1100,.12,'sine',.2),80)},'❤️':()=>{playTone(660,.15,'sine',.25);setTimeout(()=>playTone(880,.2,'sine',.2),100)},'😂':()=>{[0,80,160,240].forEach((d,i)=>setTimeout(()=>playTone(600+i*80,.08,'square',.15),d))},'😮':()=>{playTone(400,.05,'sine',.2);setTimeout(()=>playTone(700,.3,'sine',.2),50)},'👏':()=>{[0,60,120].forEach(d=>setTimeout(()=>playTone(200,.05,'sawtooth',.2),d))},'🎉':()=>{[0,50,100,150,200].forEach((d,i)=>setTimeout(()=>playTone(500+i*150,.08,'triangle',.2),d))},'🔥':()=>{[0,40,80,120].forEach((d,i)=>setTimeout(()=>playTone(300+i*50,.06,'sawtooth',.15),d))},'😢':()=>{playTone(500,.1,'sine',.2);setTimeout(()=>playTone(400,.3,'sine',.15),100)},'🤔':()=>{playTone(550,.2,'sine',.2);setTimeout(()=>playTone(520,.2,'sine',.15),200)},'✌️':()=>{playTone(700,.1,'sine',.2);setTimeout(()=>playTone(900,.15,'sine',.2),100)},'💯':()=>{[0,60,120,180].forEach((d,i)=>setTimeout(()=>playTone(700+i*100,.08,'triangle',.2),d))},'🙏':()=>{playTone(440,.15,'sine',.2);setTimeout(()=>playTone(550,.2,'sine',.15),120)}};
-function playReactionSound(e){if(RSOUNDS[e])RSOUNDS[e]();}
-function playIncomingSound(){[0,300,600].forEach(d=>setTimeout(()=>{playTone(880,.15,'sine',.3);setTimeout(()=>playTone(660,.15,'sine',.3),160)},d));}
-function playConnectSound(){playTone(660,.08,'sine',.25);setTimeout(()=>playTone(880,.12,'sine',.25),90);}
-function playMsgSound(){playTone(1000,.05,'sine',.15);setTimeout(()=>playTone(1200,.08,'sine',.1),60);}
-
-// ===== AVATAR =====
-function buildColorPicker(cid,sel,cb){
-  document.getElementById(cid).innerHTML=COLORS.map((col,i)=>
-    `<label><input type="radio" name="${cid}" value="${i}" ${i===sel?'checked':''} onchange="${cb}">
-    <div class="swatch" style="background:${col}"></div></label>`).join('');
-}
-function buildEmojiPicker(eid,sel,cb){
-  document.getElementById(eid).innerHTML=
-    `<label><input type="radio" name="${eid}" value="" ${sel===''?'checked':''} onchange="${cb}"><div class="eopt">—</div></label>`+
-    ICON_EMOJIS.map(em=>`<label><input type="radio" name="${eid}" value="${em}" ${em===sel?'checked':''} onchange="${cb}"><div class="eopt">${em}</div></label>`).join('');
-}
-function getRadio(name){const el=document.querySelector(`input[name="${name}"]:checked`);return el?el.value:null;}
-function renderAvatar(el,color,emoji,avatarUrl,name,size=36){
-  el.className=`avatar ${COLOR_CLS[color]}`;
-  el.style.cssText=`width:${size}px;height:${size}px;font-size:${size*.5}px;border-radius:50%;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center`;
-  if(avatarUrl){el.innerHTML=`<img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover">`;el.style.background='none';}
-  else el.textContent=emoji||name[0].toUpperCase();
-}
-function updateTopBar(){
-  document.getElementById('topName').textContent=myName;
-  renderAvatar(document.getElementById('topAvatar'),myColor,myEmoji,myAvatarDataUrl,myName,24);
+function randomSeed() {
+  document.getElementById('seed').value = Math.floor(Math.random() * 999999);
 }
 
-// ===== JOIN AVATAR =====
-function onJoinAvatarChange(e){
-  const f=e.target.files[0];if(!f)return;
-  resizeImage(f,200,url=>{
-    joinAvatarDataUrl=url;
-    const p=document.getElementById('joinAvatarPreview');p.src=url;p.style.display='block';
-    document.getElementById('joinImgPlaceholder').style.display='none';
-    document.getElementById('joinClearImg').style.display='block';
-  });
-}
-function clearJoinAvatar(){
-  joinAvatarDataUrl='';
-  document.getElementById('joinAvatarPreview').style.display='none';
-  document.getElementById('joinImgPlaceholder').style.display='flex';
-  document.getElementById('joinClearImg').style.display='none';
-  document.getElementById('joinAvatarFile').value='';
-}
-function onProfileAvatarChange(e){
-  const f=e.target.files[0];if(!f)return;
-  resizeImage(f,200,url=>{
-    profileAvatarDataUrl=url;
-    const p=document.getElementById('profileAvatarPreview');p.src=url;p.style.display='block';
-    document.getElementById('profileImgPlaceholder').style.display='none';
-    document.getElementById('profileClearImg').style.display='block';
-    updatePreview();
-  });
-}
-function clearProfileAvatar(){
-  profileAvatarDataUrl='';
-  document.getElementById('profileAvatarPreview').style.display='none';
-  document.getElementById('profileImgPlaceholder').style.display='flex';
-  document.getElementById('profileClearImg').style.display='none';
-  document.getElementById('profileAvatarFile').value='';
-  updatePreview();
-}
-function resizeImage(file,maxSize,cb){
-  const r=new FileReader();
-  r.onload=ev=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');let w=img.width,h=img.height;if(w>h&&w>maxSize){h=h*maxSize/w;w=maxSize;}else if(h>maxSize){w=w*maxSize/h;h=maxSize;}c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',.85));};img.src=ev.target.result;};
-  r.readAsDataURL(file);
+function setStatus(msg) { document.getElementById('status').textContent = msg; }
+
+function setProgress(pct) {
+  const wrap = document.getElementById('progressWrap');
+  const bar = document.getElementById('progressBar');
+  wrap.style.display = 'block';
+  bar.style.width = pct + '%';
+  if (pct >= 100) setTimeout(() => { wrap.style.display = 'none'; bar.style.width = '0%'; }, 600);
 }
 
-// ===== PIN =====
-function togglePin(id,btn){const el=document.getElementById(id);el.type=el.type==='password'?'text':'password';btn.textContent=el.type==='password'?'👁':'🙈';}
-function hashPin(pin){let h=5381;for(let c of pin)h=(h*33^c.charCodeAt(0))>>>0;return h.toString(16);}
+function openLightbox(src) {
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lightbox').classList.add('active');
+}
+function closeLightbox() { document.getElementById('lightbox').classList.remove('active'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
 
-// ===== TABS =====
-function switchTab(tab){
-  document.getElementById('loginForm').style.display=tab==='login'?'flex':'none';
-  document.getElementById('registerForm').style.display=tab==='register'?'flex':'none';
-  document.querySelectorAll('.joinTab').forEach((t,i)=>t.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='register')));
-}
-
-// ===== AUTO LOGIN =====
-function checkAutoLogin(){
-  try{
-    const saved=localStorage.getItem(LS_KEY);
-    if(!saved)return;
-    const u=JSON.parse(saved);
-    if(!u.id||!u.name)return;
-    document.getElementById('autoLoginName').textContent=u.name;
-    document.getElementById('autoLoginBanner').classList.add('active');
-    document.getElementById('joinTabs').style.display='none';
-    document.getElementById('loginForm').style.display='none';
-    document.getElementById('registerForm').style.display='none';
-  }catch(e){}
-}
-function autoLogin(){
-  try{
-    const u=JSON.parse(localStorage.getItem(LS_KEY));
-    myId=u.id;myName=u.name;myColor=u.color||0;myEmoji=u.emoji||'';myAvatarDataUrl=u.avatar||'';
-    startApp();
-  }catch(e){dismissAutoLogin();}
-}
-function dismissAutoLogin(){
-  document.getElementById('autoLoginBanner').classList.remove('active');
-  document.getElementById('joinTabs').style.display='flex';
-  document.getElementById('loginForm').style.display='flex';
+async function translateWithGoogle(text) {
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ja&tl=en&dt=t&q=${encodeURIComponent(text)}`;
+  const res = await fetch(url);
+  const data = await res.json();
+  return data[0].map(s => s[0]).join('');
 }
 
-// ===== LOGIN =====
-async function doLogin(e){
-  e.preventDefault();
-  const name=document.getElementById('loginName').value.trim();
-  const pin=document.getElementById('loginPin').value.trim();
-  if(!name||pin.length!==4){setStatus('loginStatus','ニックネームと4桁PINを入力してください','err');return;}
-  const btn=document.getElementById('loginBtn');btn.disabled=true;
-  setStatus('loginStatus','確認中...','');
-  try{
-    const rows=await sbSelect('users',`name=eq.${encodeURIComponent(name)}&limit=1`);
-    if(!rows||rows.length===0){setStatus('loginStatus','アカウントが見つかりません','err');btn.disabled=false;return;}
-    const u=rows[0];
-    if(u.pin_hash!==hashPin(pin)){setStatus('loginStatus','PINが違います','err');btn.disabled=false;return;}
-    myId=u.id;myName=u.name;myColor=u.color||0;myEmoji=u.emoji||'';myAvatarDataUrl=u.avatar_url||'';
-    saveLocal();
-    startApp();
-  }catch(err){setStatus('loginStatus','エラーが発生しました','err');btn.disabled=false;}
+async function getEngPrompt(promptJa, apiKey) {
+  if (apiKey) {
+    try {
+      setStatus('🤖 Claudeでプロンプトを最適化中…');
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 200,
+          system: 'Convert the user\'s image generation request into an optimal English prompt for Stable Diffusion. Output only the prompt, no explanation.',
+          messages: [{ role: 'user', content: promptJa }]
+        })
+      });
+      const data = await res.json();
+      return data.content?.[0]?.text?.trim() || promptJa;
+    } catch {
+      setStatus('⚠️ Claude失敗。Google翻訳を使用します…');
+    }
+  }
+  try {
+    setStatus('🌐 Google翻訳でプロンプトを変換中…');
+    return await translateWithGoogle(promptJa);
+  } catch {
+    return promptJa;
+  }
 }
 
-// ===== REGISTER =====
-buildColorPicker('colorPicker',0,'');
-buildEmojiPicker('emojiIconPicker','','');
-async function doRegister(e){
-  e.preventDefault();
-  const name=document.getElementById('regName').value.trim();
-  const pin=document.getElementById('regPin').value.trim();
-  if(!name){setStatus('regStatus','ニックネームを入力してください','err');return;}
-  if(pin.length!==4||!/^\d{4}$/.test(pin)){setStatus('regStatus','4桁の数字でPINを設定してください','err');return;}
-  const btn=document.getElementById('regBtn');btn.disabled=true;
-  setStatus('regStatus','登録中...','');
-  try{
-    // 名前重複チェック
-    const existing=await sbSelect('users',`name=eq.${encodeURIComponent(name)}&limit=1`);
-    if(existing&&existing.length>0){setStatus('regStatus','このニックネームはすでに使われています','err');btn.disabled=false;return;}
-    const color=parseInt(getRadio('colorPicker')||'0');
-    const emoji=getRadio('emojiIconPicker')||'';
-    const id=crypto.randomUUID();
-    await sbUpsert('users',{id,name,color,emoji,avatar_url:joinAvatarDataUrl||null,pin_hash:hashPin(pin),last_seen:new Date().toISOString()});
-    myId=id;myName=name;myColor=color;myEmoji=emoji;myAvatarDataUrl=joinAvatarDataUrl;
-    saveLocal();
-    startApp();
-  }catch(err){setStatus('regStatus','エラーが発生しました','err');btn.disabled=false;}
+function buildUrl(engPrompt, negPrompt, w, h, seed, model, quality, enhance) {
+  const s = seed === -1 ? Math.floor(Math.random() * 999999) : seed;
+  const neg = negPrompt ? encodeURIComponent(negPrompt) : '';
+  let url = `https://image.pollinations.ai/prompt/${encodeURIComponent(engPrompt)}?width=${w}&height=${h}&seed=${s}&model=${model}&quality=${quality}&nologo=true`;
+  if (neg) url += `&negative_prompt=${neg}`;
+  if (enhance) url += `&enhance=true`;
+  return { url, seed: s };
 }
 
-function setStatus(id,msg,type){
-  const el=document.getElementById(id);el.textContent=msg;
-  el.className='statusMsg'+(type?' '+type:'');
-}
-function saveLocal(){
-  localStorage.setItem(LS_KEY,JSON.stringify({id:myId,name:myName,color:myColor,emoji:myEmoji,avatar:myAvatarDataUrl}));
-}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// ===== START APP =====
-function startApp(){
-  document.getElementById('joinScreen').style.display='none';
-  document.getElementById('mainApp').style.display='flex';
-  updateTopBar();
-  addSys('🌐 接続中...');
-  initPeer(0);
-}
+async function generate() {
+  const apiKey  = document.getElementById('apiKey').value.trim();
+  const promptJa = document.getElementById('prompt').value.trim();
+  const negPrompt = document.getElementById('negPrompt').value.trim();
+  const count   = parseInt(document.getElementById('count').value);
+  const size    = document.getElementById('size').value;
+  const model   = document.getElementById('model').value;
+  const style   = document.getElementById('style').value;
+  const quality = document.getElementById('quality').value;
+  const seedVal = parseInt(document.getElementById('seed').value);
+  const enhance = document.getElementById('enhance').checked;
 
-// ===== PEER =====
-function initPeer(idx){
-  const cfg=PEER_CONFIGS[idx];
-  peer=cfg?new Peer(cfg):new Peer();
-  peer.on('open',async id=>{
-    myPeerId=id;
-    addSys('✅ 接続完了！世界中のユーザーとつながれます');
-    await registerMe();await fetchLobby();await fetchMessages();
-    heartbeatTimer=setInterval(registerMe,8000);
-    refreshTimer=setInterval(fetchLobby,6000);
-    msgTimer=setInterval(fetchMessages,4000);
-  });
-  peer.on('connection',conn=>{setupConn(conn);conn.on('open',()=>{if(currentCall)callDataConn=conn;});});
-  peer.on('call',call=>{
-    incomingCallObj=call;
-    const m=call.metadata||{};
-    document.getElementById('callerInfo').textContent=`${m.name||'不明'} から通話リクエストが届いています`;
-    document.getElementById('incomingCall').classList.add('active');
-    playIncomingSound();
-  });
-  peer.on('error',e=>{
-    if((e.type==='server-error'||e.type==='network')&&idx+1<PEER_CONFIGS.length){peer.destroy();initPeer(idx+1);}
-    else addSys('接続エラー: '+e.type);
-  });
-}
+  if (!promptJa) { setStatus('⚠️ 画像の説明を入力してください'); return; }
 
-// ===== LOBBY =====
-async function registerMe(){
-  try{await sbUpsert('lobby',{peer_id:myPeerId,name:myName,color:myColor,avatar_url:myAvatarDataUrl||null,updated_at:new Date().toISOString()});}catch(e){}
-}
-async function fetchLobby(){
-  try{
-    const cutoff=new Date(Date.now()-TIMEOUT).toISOString();
-    const rows=await sbSelect('lobby',`updated_at=gte.${cutoff}&order=updated_at.desc`);
-    document.getElementById('onlineCount').textContent=rows.length;
-    renderOnline(rows);
-    rows.forEach(r=>{if(r.peer_id!==myPeerId&&!dataConns[r.peer_id])openDataConn(r.peer_id);});
-  }catch(e){}
-}
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  setProgress(0);
 
-// ===== DATA CONN =====
-function openDataConn(tid){
-  if(dataConns[tid]||tid===myPeerId)return;
-  const conn=peer.connect(tid,{metadata:{name:myName,color:myColor},reliable:true});
-  conn.on('open',()=>{dataConns[tid]=conn;});
-  setupConn(conn);
-}
-function setupConn(conn){
-  conn.on('open',()=>{dataConns[conn.peer]=conn;});
-  conn.on('data',d=>onData(d,conn));
-  conn.on('close',()=>{delete dataConns[conn.peer];if(callDataConn===conn)callDataConn=null;});
-  conn.on('error',()=>{delete dataConns[conn.peer];if(callDataConn===conn)callDataConn=null;});
-}
-function onData(d,conn){
-  if(d.type==='callChat'){addCallMsg({...d,mine:false});playMsgSound();}
-  else if(d.type==='reaction'){showReaction(d.emoji,d.name,false);playReactionSound(d.emoji);}
-  else if(d.type==='callTyping'){showCallTyping(d.name);}
-  else if(d.type==='globalTyping'){showGlobalTyping(d.name);}
-  else if(d.type==='msgDeleted'){markDeleted(d.msgId);}
-}
+  // Translate / optimize
+  let engPrompt = await getEngPrompt(promptJa, apiKey);
+  if (style) engPrompt = `${engPrompt}, ${style}`;
+  const [w, h] = size.split('x');
 
-// ===== ONLINE LIST =====
-function renderOnline(rows){
-  const list=document.getElementById('onlineList');
-  if(!rows||rows.length===0){list.innerHTML='<div class="emptyState">今はあなただけです 😊<br>他の人が参加すると<br>ここに表示されます</div>';return;}
-  list.innerHTML='';
-  rows.forEach(u=>{
-    const isMe=u.peer_id===myPeerId;
-    const wrap=document.createElement('div');wrap.className='onlineUser';
-    const av=document.createElement('div');renderAvatar(av,u.color||0,u.emoji||'',u.avatar_url||'',u.name,36);wrap.appendChild(av);
-    const info=document.createElement('div');info.className='uinfo';
-    info.innerHTML=`<div class="uname">${esc(u.name)}</div><div class="ustatus">${isMe?'あなた':'オンライン'}</div>`;
-    wrap.appendChild(info);
-    if(isMe){const t=document.createElement('span');t.className='youTag';t.textContent='あなた';wrap.appendChild(t);}
-    else{const b=document.createElement('button');b.className='callBtn';b.textContent='📞 通話';b.onclick=()=>callUser(u.peer_id,u.name);wrap.appendChild(b);}
-    list.appendChild(wrap);
-  });
-}
+  // Setup grid
+  const grid = document.getElementById('imgGrid');
+  grid.className = `grid-imgs n${count}`;
+  grid.innerHTML = '';
+  const resultGrid = document.getElementById('resultGrid');
+  resultGrid.style.display = 'flex';
 
-// ===== GLOBAL CHAT =====
-function onMsgKey(e){if(e.key==='Enter')sendMsg();}
-function onTyping(){
-  if(!isTyping){isTyping=true;broadcast({type:'globalTyping',name:myName});}
-  clearTimeout(typingTimer);typingTimer=setTimeout(()=>{isTyping=false;},2000);
-}
-function showGlobalTyping(name){
-  const el=document.getElementById('typingIndicator');el.textContent=`${name} が入力中...`;
-  clearTimeout(el._t);el._t=setTimeout(()=>el.textContent='',2500);
-}
+  // Placeholders
+  const slots = [];
+  for (let i = 0; i < count; i++) {
+    const wrap = document.createElement('div');
+    wrap.className = 'img-wrap';
+    wrap.innerHTML = '<div class="spinner"></div>';
+    grid.appendChild(wrap);
+    slots.push(wrap);
+  }
 
-// ===== CHAT IMAGE =====
-function onChatImgSelect(e){
-  const f=e.target.files[0];if(!f)return;
-  pendingImgFile=f;pendingImgDataUrl=URL.createObjectURL(f);
-  document.getElementById('imgPreviewThumb').src=pendingImgDataUrl;
-  document.getElementById('imgPreviewBar').classList.add('active');
-  e.target.value='';
-}
-function clearPendingImg(){
-  pendingImgFile=null;pendingImgDataUrl='';
-  document.getElementById('imgPreviewBar').classList.remove('active');
-  document.getElementById('imgPreviewThumb').src='';
-}
-function openImgOverlay(src){document.getElementById('overlayImg').src=src;document.getElementById('imgOverlay').classList.add('active');}
+  const seeds = [];
+  let done = 0;
 
-async function uploadImageToStorage(file){
-  const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
-  const path=`${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
-  const buf=await file.arrayBuffer();
-  await axios.post(`${SB_URL}/storage/v1/object/chat-images/${path}`,buf,
-    {headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':file.type||'image/jpeg','x-upsert':'true'}});
-  return `${SB_URL}/storage/v1/object/public/chat-images/${path}`;
-}
+  for (let i = 0; i < count; i++) {
+    if (i > 0) {
+      // 5秒インターバル
+      for (let t = 5; t > 0; t--) {
+        setStatus(`⏳ 次の画像まで ${t} 秒待機中… (${i}/${count} 完了)`);
+        await sleep(1000);
+      }
+    }
+    setStatus(`🎨 ${i + 1} / ${count} 枚目を生成中…`);
 
-async function sendMsg(){
-  const inp=document.getElementById('msgInput');
-  const txt=inp.value.trim();
-  if(!txt&&!pendingImgFile)return;
-  inp.value='';isTyping=false;
-  const file=pendingImgFile,localPreview=pendingImgDataUrl;
-  clearPendingImg();
-  renderMsg({name:myName,color:myColor,avatar_url:myAvatarDataUrl,text:txt,image_url:localPreview||null,mine:true,created_at:new Date().toISOString(),id:'tmp_'+Date.now()},true);
-  try{
-    let imgUrl=null;
-    if(file)imgUrl=await uploadImageToStorage(file);
-    await sbUpsert('messages',{peer_id:myPeerId,user_id:myId,name:myName,color:myColor,text:txt||null,image_url:imgUrl||null,deleted:false});
-  }catch(e){addSys('送信失敗: '+e.message);}
-}
+    const { url, seed: usedSeed } = buildUrl(engPrompt, negPrompt, w, h, seedVal, model, quality, enhance);
+    seeds.push(usedSeed);
 
-async function fetchMessages(){
-  try{
-    let q='order=created_at.asc&limit=100';
-    if(lastMsgTime)q+=`&created_at=gt.${encodeURIComponent(lastMsgTime)}`;
-    const rows=await sbSelect('messages',q);
-    rows.forEach(r=>{
-      if(r.peer_id===myPeerId)return;
-      const atBottom=isAtBottom('chatMessages');
-      renderMsg({...r,mine:false},atBottom);
-      if(isInCall){unreadCount++;document.getElementById('unreadBadge').textContent=unreadCount;document.getElementById('unreadBadge').style.display='inline';}
-      playMsgSound();
+    await new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        slots[i].innerHTML = `
+          <img src="${url}" onclick="openLightbox('${url}')" />
+          <div class="overlay">
+            <span>seed: ${usedSeed}</span>
+            <a class="dl-icon" href="${url}" download="gen_${usedSeed}.jpg" onclick="event.stopPropagation()">⬇️</a>
+          </div>`;
+        done++;
+        setProgress(Math.round((done / count) * 100));
+        resolve();
+      };
+      img.onerror = () => {
+        slots[i].innerHTML = `<div style="color:rgba(255,255,255,0.4);font-size:12px;padding:12px">❌ 失敗</div>`;
+        done++;
+        setProgress(Math.round((done / count) * 100));
+        resolve();
+      };
+      img.src = url;
     });
-    if(rows.length>0)lastMsgTime=rows[rows.length-1].created_at;
-    // 削除済みメッセージの反映
-    await syncDeleted();
-  }catch(e){}
-}
 
-async function syncDeleted(){
-  try{
-    const rows=await sbSelect('messages','deleted=eq.true&order=created_at.desc&limit=50');
-    rows.forEach(r=>markDeleted(r.id));
-  }catch(e){}
-}
-
-function renderMsg(msg,scroll){
-  if(msg.deleted){renderDeletedMsg(msg.id);return;}
-  const box=document.getElementById('chatMessages');
-  // 自分のメッセージかどうかをuser_idで判定
-  const isMine = msg.user_id === myId || msg.peer_id === myPeerId || msg.mine === true;
-  wrap.dataset.msgId=msg.id||'';
-  const av=document.createElement('div');renderAvatar(av,msg.color||0,msg.emoji||'',msg.avatar_url||'',msg.name,30);wrap.appendChild(av);
-  const t=msg.created_at?new Date(msg.created_at).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):nowStr();
-  const inner=document.createElement('div');
-  let content='';
-  if(msg.text)content+=`<div>${esc(msg.text)}</div>`;
-  if(msg.image_url)content+=`<img src="${msg.image_url}" onclick="openImgOverlay('${msg.image_url.replace(/'/g,"\\'")}')">`;
-  const delBtn=isMine?`<button class="deleteBtn" data-msg-id="${msg.id}" title="削除">🗑️</button>`:'';
-  inner.innerHTML=`<div class="msgBubble">${content}</div><div class="msgMeta">${isMine?'':esc(msg.name)+' · '}${t}${delBtn}</div>`;
-  wrap.appendChild(inner);
-  box.appendChild(wrap);
-  if(scroll)box.scrollTop=box.scrollHeight;
-}
-
-function renderDeletedMsg(id){
-  // 既存要素を削除済み表示に差し替え
-  const el=document.querySelector(`[data-msg-id="${id}"]`);
-  if(el){
-    el.querySelectorAll('.msgBubble').forEach(b=>{b.innerHTML='<span class="deletedMsg">🗑️ このメッセージは削除されました</span>';});
-    el.querySelectorAll('.deleteBtn').forEach(b=>b.remove());
+    addHistory(url, usedSeed);
   }
-}
-function markDeleted(id){renderDeletedMsg(id);}
 
-// ===== DELETE =====
-function askDelete(id){
-  console.log('askDelete called, id=',id);
-  pendingDeleteId=id;
-  document.getElementById('deleteConfirm').classList.add('active');
-}
-function closeDeleteConfirm(){pendingDeleteId=null;document.getElementById('deleteConfirm').classList.remove('active');}
-async function confirmDelete(){
-  if(!pendingDeleteId){closeDeleteConfirm();return;}
-  const id=pendingDeleteId;closeDeleteConfirm();
-  try{
-    console.log('削除試行 id=',id);
-    const res=await axios.patch(
-      `${SB_URL}/rest/v1/messages?id=eq.${id}`,
-      {deleted:true},
-      {headers:{
-        'apikey':SB_KEY,
-        'Authorization':'Bearer '+SB_KEY,
-        'Content-Type':'application/json',
-        'Prefer':'return=minimal'
-      }}
-    );
-    console.log('削除成功',res.status);
-    markDeleted(id);
-    broadcast({type:'msgDeleted',msgId:id});
-  }catch(e){
-    console.error('削除エラー',e.response?.status, e.response?.data, e.message);
-    addSys('削除に失敗しました: '+JSON.stringify(e.response?.data||e.message));
-  }
+  document.getElementById('metaInfo').innerHTML =
+    `<b>プロンプト:</b> ${engPrompt}${negPrompt ? `<br><b>ネガティブ:</b> ${negPrompt}` : ''}<br>` +
+    `<b>モデル:</b> ${model} / <b>サイズ:</b> ${w}×${h} / <b>品質:</b> ${quality}<br>` +
+    `<b>Seeds:</b> ${seeds.join(', ')}`;
+
+  setStatus('✅ 生成完了！');
+  btn.disabled = false;
 }
 
-function addSys(txt){
-  const box=document.getElementById('chatMessages');
-  const d=document.createElement('div');d.className='systemMsg';d.textContent=txt;
-  box.appendChild(d);box.scrollTop=box.scrollHeight;
+function addHistory(url, seed) {
+  history.unshift({ url, seed });
+  const grid = document.getElementById('historyGrid');
+  document.getElementById('histLabel').style.display = 'block';
+  grid.innerHTML = history.slice(0, 12).map(h =>
+    `<img src="${h.url}" title="seed: ${h.seed}" onclick="openLightbox('${h.url}')" />`
+  ).join('');
 }
 
-// ===== IN-CALL CHAT =====
-function onCallTyping(){
-  const conn=callDataConn||Object.values(dataConns)[0];
-  if(conn)try{conn.send({type:'callTyping',name:myName});}catch(e){}
-}
-function showCallTyping(name){
-  const el=document.getElementById('callChatTyping');el.textContent=`${name} が入力中...`;
-  clearTimeout(el._t);el._t=setTimeout(()=>el.textContent='',2500);
-}
-function onCallImgSelect(e){
-  const f=e.target.files[0];if(!f)return;e.target.value='';
-  const local=URL.createObjectURL(f);
-  addCallMsg({name:myName,color:myColor,text:'',image_url:local,mine:true});
-  uploadImageToStorage(f).then(url=>{
-    const conn=callDataConn||Object.values(dataConns)[0];
-    if(conn)try{conn.send({type:'callChat',name:myName,color:myColor,text:'',image_url:url});}catch(e){}
-  }).catch(()=>addSys('画像送信失敗'));
-}
-function sendCallMsg(){
-  const inp=document.getElementById('callMsgInput');
-  const txt=inp.value.trim();if(!txt)return;inp.value='';
-  addCallMsg({name:myName,color:myColor,text:txt,mine:true});
-  const conn=callDataConn||Object.values(dataConns)[0];
-  if(conn)try{conn.send({type:'callChat',name:myName,color:myColor,text:txt});}catch(e){}
-}
-function addCallMsg(msg){
-  const box=document.getElementById('callChatMsgs');
-  const d=document.createElement('div');d.className='callMsg'+(msg.mine?' mine':'');
-  let html=msg.mine?'':'<div class="cmName">'+esc(msg.name)+'</div>';
-  if(msg.text)html+=esc(msg.text);
-  if(msg.image_url)html+=`<br><img src="${msg.image_url}" style="max-width:180px;max-height:160px;border-radius:8px;margin-top:4px;cursor:pointer" onclick="openImgOverlay('${msg.image_url.replace(/'/g,"\\'")}')">`;
-  d.innerHTML=html;box.appendChild(d);box.scrollTop=box.scrollHeight;
-}
-
-// ===== REACTIONS =====
-function toggleEmojiPicker(){document.getElementById('emojiPicker').classList.toggle('open');}
-function startReaction(emoji){
-  reactionActive=true;fireReaction(emoji);
-  reactionInterval=setInterval(()=>{if(reactionActive)fireReaction(emoji);},200);
-}
-function stopReaction(){reactionActive=false;clearInterval(reactionInterval);reactionInterval=null;}
-function fireReaction(emoji){
-  showReaction(emoji,myName,true);playReactionSound(emoji);
-  const conn=callDataConn||Object.values(dataConns)[0];
-  if(conn)try{conn.send({type:'reaction',emoji,name:myName});}catch(e){}
-}
-function showReaction(emoji,senderName,isMine){
-  const modal=document.getElementById('videoModal');const rect=modal.getBoundingClientRect();
-  const el=document.createElement('div');el.className='reaction';
-  el.innerHTML=`<div class="emoji">${emoji}</div><div class="rname">${esc(senderName)}</div>`;
-  el.style.left=(rect.left+rect.width*0.08+Math.random()*rect.width*0.55)+'px';
-  el.style.top=(rect.top+rect.height*0.70)+'px';
-  document.body.appendChild(el);setTimeout(()=>el.remove(),2100);
-}
-
-// ===== PROFILE =====
-function openProfile(){
-  document.getElementById('profileName').value=myName;
-  profileAvatarDataUrl=myAvatarDataUrl;
-  buildColorPicker('profileColorPicker',myColor,'updatePreview()');
-  buildEmojiPicker('profileEmojiPicker',myEmoji,'updatePreview()');
-  if(myAvatarDataUrl){
-    const p=document.getElementById('profileAvatarPreview');p.src=myAvatarDataUrl;p.style.display='block';
-    document.getElementById('profileImgPlaceholder').style.display='none';
-    document.getElementById('profileClearImg').style.display='block';
-  }else{
-    document.getElementById('profileAvatarPreview').style.display='none';
-    document.getElementById('profileImgPlaceholder').style.display='flex';
-    document.getElementById('profileClearImg').style.display='none';
-  }
-  updatePreview();document.getElementById('profileModal').classList.add('active');
-}
-function closeProfile(){document.getElementById('profileModal').classList.remove('active');}
-function updatePreview(){
-  const name=document.getElementById('profileName').value||myName;
-  const color=parseInt(getRadio('profileColorPicker')||'0');
-  const emoji=getRadio('profileEmojiPicker')||'';
-  document.getElementById('previewName').textContent=name;
-  const av=document.getElementById('previewAvatar');
-  av.style.cssText='width:60px;height:60px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;flex-shrink:0';
-  renderAvatar(av,color,emoji,profileAvatarDataUrl,name||'?',60);
-}
-async function saveProfile(){
-  const name=document.getElementById('profileName').value.trim();
-  if(!name){alert('ニックネームを入力してください');return;}
-  myName=name;myColor=parseInt(getRadio('profileColorPicker')||'0');
-  myEmoji=getRadio('profileEmojiPicker')||'';myAvatarDataUrl=profileAvatarDataUrl;
-  updateTopBar();closeProfile();saveLocal();
-  await registerMe();addSys('✅ プロフィールを更新しました');
-}
-
-// ===== VIDEO =====
-async function getStream(){if(!localStream)localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});return localStream;}
-function startDurationTimer(){
-  callStartTime=Date.now();
-  durationTimer=setInterval(()=>{
-    const s=Math.floor((Date.now()-callStartTime)/1000);
-    document.getElementById('callDuration').textContent=`⏱ ${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
-  },1000);
-}
-async function callUser(tid,tname){
-  try{
-    const stream=await getStream();
-    document.getElementById('localVideo').srcObject=stream;
-    document.getElementById('localLabel').textContent=myName;
-    document.getElementById('remoteLabel').textContent=tname;
-    document.getElementById('callStatus').textContent=`${tname} に発信中...`;
-    document.getElementById('callChatMsgs').innerHTML='';
-    document.getElementById('videoModal').classList.add('active');
-    isInCall=true;unreadCount=0;document.getElementById('unreadBadge').style.display='none';
-    const call=peer.call(tid,stream,{metadata:{name:myName,color:myColor}});
-    currentCall=call;
-    setTimeout(()=>{if(!callDataConn){const conn=peer.connect(tid,{reliable:true});conn.on('open',()=>{callDataConn=conn;dataConns[tid]=conn;});setupConn(conn);}},500);
-    call.on('stream',r=>{document.getElementById('remoteVideo').srcObject=r;document.getElementById('callStatus').textContent=`${tname} と通話中 🟢`;playConnectSound();startDurationTimer();});
-    call.on('close',()=>endCall());call.on('error',()=>{addSys('通話エラー');endCall();});
-  }catch(e){alert('カメラ・マイクのアクセスを許可してください');document.getElementById('videoModal').classList.remove('active');}
-}
-async function acceptCall(){
-  document.getElementById('incomingCall').classList.remove('active');
-  try{
-    const stream=await getStream();
-    document.getElementById('localVideo').srcObject=stream;
-    const m=incomingCallObj.metadata||{};
-    document.getElementById('localLabel').textContent=myName;
-    document.getElementById('remoteLabel').textContent=m.name||'相手';
-    document.getElementById('callStatus').textContent=`${m.name||'相手'} と通話中 🟢`;
-    document.getElementById('callChatMsgs').innerHTML='';
-    document.getElementById('videoModal').classList.add('active');
-    isInCall=true;unreadCount=0;
-    incomingCallObj.answer(stream);currentCall=incomingCallObj;
-    incomingCallObj.on('stream',r=>{document.getElementById('remoteVideo').srcObject=r;playConnectSound();startDurationTimer();});
-    incomingCallObj.on('close',()=>endCall());
-  }catch(e){alert('カメラ・マイクのアクセスを許可してください');}
-}
-function rejectCall(){document.getElementById('incomingCall').classList.remove('active');incomingCallObj=null;}
-function endCall(){
-  if(currentCall){currentCall.close();currentCall=null;}
-  if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
-  if(screenStream){screenStream.getTracks().forEach(t=>t.stop());screenStream=null;}
-  if(durationTimer){clearInterval(durationTimer);durationTimer=null;}
-  stopReaction();callDataConn=null;isInCall=false;screenOn=false;
-  document.getElementById('localVideo').srcObject=null;document.getElementById('remoteVideo').srcObject=null;
-  document.getElementById('videoModal').classList.remove('active');
-  document.getElementById('localBox').classList.remove('screen-share');
-  document.getElementById('callDuration').textContent='';
-  micOn=true;camOn=true;
-  ['micBtn','camBtn','screenBtn'].forEach(id=>document.getElementById(id).className='ctrlBtn on');
-  document.getElementById('micBtn').textContent='🎤';document.getElementById('camBtn').textContent='📹';document.getElementById('screenBtn').textContent='🖥️';
-}
-function toggleMic(){if(!localStream)return;micOn=!micOn;localStream.getAudioTracks().forEach(t=>t.enabled=micOn);document.getElementById('micBtn').textContent=micOn?'🎤':'🔇';document.getElementById('micBtn').className='ctrlBtn '+(micOn?'on':'off');}
-function toggleCam(){if(!localStream)return;camOn=!camOn;localStream.getVideoTracks().forEach(t=>t.enabled=camOn);document.getElementById('camBtn').textContent=camOn?'📹':'🚫';document.getElementById('camBtn').className='ctrlBtn '+(camOn?'on':'off');}
-async function toggleScreen(){
-  if(!screenOn){
-    try{
-      screenStream=await navigator.mediaDevices.getDisplayMedia({video:true,audio:true});
-      const track=screenStream.getVideoTracks()[0];
-      if(currentCall&&currentCall.peerConnection){const s=currentCall.peerConnection.getSenders().find(s=>s.track&&s.track.kind==='video');if(s)s.replaceTrack(track);}
-      document.getElementById('localVideo').srcObject=screenStream;
-      document.getElementById('localBox').classList.add('screen-share');
-      document.getElementById('localLabel').textContent='🖥️ 画面共有中';
-      screenOn=true;document.getElementById('screenBtn').className='ctrlBtn active';
-      track.onended=()=>stopScreen();
-    }catch(e){if(e.name!=='NotAllowedError')alert('画面共有に失敗しました');}
-  }else{stopScreen();}
-}
-async function stopScreen(){
-  if(screenStream){screenStream.getTracks().forEach(t=>t.stop());screenStream=null;}
-  screenOn=false;document.getElementById('screenBtn').className='ctrlBtn on';
-  try{const stream=await getStream();const track=stream.getVideoTracks()[0];if(currentCall&&currentCall.peerConnection){const s=currentCall.peerConnection.getSenders().find(s=>s.track&&s.track.kind==='video');if(s)s.replaceTrack(track);}document.getElementById('localVideo').srcObject=stream;document.getElementById('localBox').classList.remove('screen-share');document.getElementById('localLabel').textContent=myName;}catch(e){}
-}
-
-// ===== INIT =====
-document.addEventListener('click',e=>{
-  const p=document.getElementById('emojiPicker');
-  if(p.classList.contains('open')&&!e.target.closest('.emojiPickerWrap'))p.classList.remove('open');
-  const pm=document.getElementById('profileModal');
-  if(pm.classList.contains('active')&&e.target===pm)closeProfile();
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.ctrlKey) generate();
 });
-window.addEventListener('beforeunload',()=>{
-  clearInterval(heartbeatTimer);clearInterval(refreshTimer);clearInterval(msgTimer);
-  try{sbDelete('lobby',`peer_id=eq.${myPeerId}`);}catch(e){}
-});
-
-// usersテーブルにpin_hashカラムがなければSQL追加が必要なためチェック
-checkAutoLogin();
 </script>
 </body>
 </html>
